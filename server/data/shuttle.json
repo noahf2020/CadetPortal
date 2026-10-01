@@ -1,0 +1,48 @@
+{
+  "hours": "Shuttles run from 7am to 6pm.",
+  "note": "Times are minutes past the hour. Track both shuttles live in the TransLoc app.",
+  "routes": [
+    {
+      "route": "Northbound",
+      "stops": [
+        { "stop": "Visitor's Center Parking Lot", "minutes": ["00", "30"] },
+        { "stop": "Hotel Thayer", "minutes": ["02", "32"] },
+        { "stop": "Buffalo Soldier Field Parking Lot", "minutes": ["03", "33"] },
+        { "stop": "Thayer / Cullum Rd", "minutes": ["04", "34"] },
+        { "stop": "Mahan Hall Tunnel", "minutes": ["05", "35"] },
+        { "stop": "Library Corner", "minutes": ["06", "36"] },
+        { "stop": "Rugar / Howard", "minutes": ["07", "37"] },
+        { "stop": "Bldg 667-A", "minutes": ["08", "38"] },
+        { "stop": "Bldg 681", "minutes": ["09", "39"] },
+        { "stop": "Washington / Buckner Hill Rd (near K-Lot)", "minutes": ["11", "41"] },
+        { "stop": "K-Lot (in front of Subway)", "minutes": ["12", "42"] },
+        { "stop": "Keller Hospital Circle", "minutes": ["14", "44"] },
+        { "stop": "Post Laundry", "minutes": ["15", "45"] },
+        { "stop": "USMAPS", "minutes": ["16", "46"] },
+        { "stop": "Child Development Center", "minutes": ["25", "55"] },
+        { "stop": "PX / Commissary", "minutes": ["30", "00"] }
+      ]
+    },
+    {
+      "route": "Southbound",
+      "stops": [
+        { "stop": "PX / Commissary (starts in front of PX)", "minutes": ["00", "30"] },
+        { "stop": "USMAPS", "minutes": ["14", "44"] },
+        { "stop": "Post Laundry", "minutes": ["15", "45"] },
+        { "stop": "Keller Hospital Circle", "minutes": ["16", "46"] },
+        { "stop": "K-Lot (in front of Subway)", "minutes": ["18", "48"] },
+        { "stop": "Washington / Buckner Hill Rd (near K-Lot)", "minutes": ["19", "49"] },
+        { "stop": "Bldg 681", "minutes": ["20", "50"] },
+        { "stop": "Bldg 667-A", "minutes": ["21", "51"] },
+        { "stop": "Thayer Statue", "minutes": ["22", "52"] },
+        { "stop": "Library Corner", "minutes": ["23", "53"] },
+        { "stop": "Mahan Hall Tunnel", "minutes": ["24", "54"] },
+        { "stop": "Thayer / Cullum Rd", "minutes": ["25", "55"] },
+        { "stop": "Buffalo Soldier Field Parking Lot", "minutes": ["26", "56"] },
+        { "stop": "Bldg 626 / 622 (Southbound only)", "minutes": ["27", "57"] },
+        { "stop": "Thayer Gate", "minutes": ["27", "57"] },
+        { "stop": "Visitor's Center Parking Lot by the Tank", "minutes": ["30", "00"] }
+      ]
+    }
+  ]
+}

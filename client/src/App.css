@@ -340,8 +340,32 @@ body {
   margin-bottom: 16px;
 }
 
-.ferry-heading {
+/* Bold heading above a schedule (used by the ferry and shuttle cards). */
+.ferry-heading,
+.schedule-heading {
   margin: 0 0 8px;
+  font-weight: 600;
+}
+
+/* Northbound and Southbound shuttle routes sit side by side. */
+.shuttle-routes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+/* One shuttle stop: name on the left, minutes on the right. */
+.shuttle-stop {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.shuttle-minutes {
+  white-space: nowrap; /* keep both times on one line */
   font-weight: 600;
 }
 
@@ -407,6 +431,11 @@ body {
 
   /* Stack the info cards in one column. */
   .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Stack the shuttle routes too. */
+  .shuttle-routes {
     grid-template-columns: 1fr;
   }
 }

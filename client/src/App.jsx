@@ -4,12 +4,13 @@
  * The main layout of the Cadet Portal:
  *   1. A top bar with the portal name and today's date.
  *   2. A dark "hero" area with the Quick Links carousel.
- *   3. A grid of info cards (UOD, ferry hours, announcements).
+ *   3. A grid of info cards (UOD, ferry hours, shuttle times, announcements).
  */
 
 import UniformOfTheDay from "./components/UniformOfTheDay.jsx";
 import QuickLinks from "./components/QuickLinks.jsx";
 import FerryHours from "./components/FerryHours.jsx";
+import ShuttleTimes from "./components/ShuttleTimes.jsx";
 import Announcements from "./components/Announcements.jsx";
 
 /**
@@ -43,6 +44,7 @@ function App() {
         <div className="info-grid">
           <UniformOfTheDay />
           <FerryHours />
+          <ShuttleTimes />
           <Announcements />
         </div>
       </main>

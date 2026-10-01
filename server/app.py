@@ -2,7 +2,8 @@
 app.py
 
 The Flask server for the Cadet Portal.
-It sends the portal's data (links, ferry hours, UOD, announcements)
+It sends the portal's data (links, ferry hours, shuttle times,
+UOD, announcements)
 to the React webpage as JSON. The portal has no login, so every
 route is read-only.
 
@@ -34,6 +35,15 @@ def get_ferry():
     """Return the ferry schedule."""
     ferry = load_json("ferry.json")
     return jsonify(ferry)
+
+
+# GET /api/shuttle
+# Response: { "hours", "note", "routes": [{ "route", "stops": [{ "stop", "minutes": [...] }] }] }
+@app.route("/api/shuttle")
+def get_shuttle():
+    """Return the shuttle schedule."""
+    shuttle = load_json("shuttle.json")
+    return jsonify(shuttle)
 
 
 # GET /api/uod
