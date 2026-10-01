@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 
 /**
  * UniformOfTheDay - shows the uniform, its date, and any notes.
- * @returns The UOD section.
+ * @returns The UOD card.
  */
 function UniformOfTheDay() {
   // The UOD data. It is null until the server responds.
@@ -23,16 +23,15 @@ function UniformOfTheDay() {
   }, []);
 
   return (
-    <section className="section">
-      <h2>Uniform of the Day</h2>
+    <section className="card">
+      <p className="card-label">Uniform of the Day</p>
       {/* Show "Loading..." until the data arrives, then show the UOD. */}
       {uod === null ? (
-        <p>Loading...</p>
+        <p className="muted">Loading...</p>
       ) : (
         <div>
-          <p>
-            <strong>{uod.uniform}</strong> ({uod.date})
-          </p>
+          <p className="uod-uniform">{uod.uniform}</p>
+          <p className="muted">{uod.date}</p>
           <p>{uod.notes}</p>
         </div>
       )}

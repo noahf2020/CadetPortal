@@ -10,5 +10,17 @@
     "description": "Build citations for academic papers.",
     "url": "#",
     "category": "Academics"
+  },
+  {
+    "name": "Ferry Hours",
+    "description": "Official ferry schedule between West Point and Garrison.",
+    "url": "#",
+    "category": "Life"
+  },
+  {
+    "name": "Uniform of the Day",
+    "description": "Check today's uniform.",
+    "url": "#",
+    "category": "Military"
   }
 ]

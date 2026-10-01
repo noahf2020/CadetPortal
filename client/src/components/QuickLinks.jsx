@@ -1,15 +1,17 @@
 /**
  * QuickLinks.jsx
  *
- * Shows a grid of links to common cadet services
- * (Regulation Wizard, Citemate, etc.). The links come from GET /api/links.
+ * The "hero" area at the top of the page. It shows links to common cadet
+ * services (Regulation Wizard, Citemate, etc.) as a carousel of cards.
+ * The links come from GET /api/links.
  */
 
 import { useEffect, useState } from "react";
+import Carousel from "./Carousel.jsx";
 
 /**
- * QuickLinks - shows one card for each service link.
- * @returns The quick links section.
+ * QuickLinks - loads the service links and hands them to the Carousel.
+ * @returns The hero section with the carousel.
  */
 function QuickLinks() {
   // The list of links. It starts empty until the server responds.
@@ -24,16 +26,11 @@ function QuickLinks() {
   }, []);
 
   return (
-    <section className="section">
-      <h2>Quick Links</h2>
-      <div className="link-grid">
-        {links.map((link) => (
-          // "key" helps React keep track of each card in the list.
-          <a key={link.name} className="link-card" href={link.url} target="_blank" rel="noreferrer">
-            <strong>{link.name}</strong>
-            <p>{link.description}</p>
-          </a>
-        ))}
+    <section className="hero">
+      <div className="hero-inner">
+        <h1>Everything you need, in one place.</h1>
+        <p className="hero-subtitle">Quick access to the services cadets use every day.</p>
+        <Carousel links={links} />
       </div>
     </section>
   );

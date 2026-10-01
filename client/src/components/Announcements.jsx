@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 
 /**
  * Announcements - shows each announcement's title, author, date, and text.
- * @returns The announcements section.
+ * @returns The announcements card (it stretches across the full grid width).
  */
 function Announcements() {
   // The list of announcements. It starts empty until the server responds.
@@ -23,14 +23,14 @@ function Announcements() {
   }, []);
 
   return (
-    <section className="section">
-      <h2>Announcements</h2>
+    <section className="card wide">
+      <p className="card-label">Announcements</p>
       {announcements.map((item) => (
-        <article key={item.id}>
+        <article key={item.id} className="announcement">
           <h3>{item.title}</h3>
-          <small>
-            {item.author} - {item.date}
-          </small>
+          <p className="muted small">
+            {item.author} · {item.date}
+          </p>
           <p>{item.body}</p>
         </article>
       ))}
