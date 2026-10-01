@@ -1,0 +1,9 @@
+[
+  {
+    "id": 1,
+    "title": "Welcome to the Cadet Portal",
+    "body": "This is a sample announcement. Edit server/data/announcements.json to change it.",
+    "author": "Portal Team",
+    "date": "2026-10-01"
+  }
+]

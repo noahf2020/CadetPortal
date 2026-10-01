@@ -1,0 +1,15 @@
+{
+  "note": "SAMPLE DATA - replace with the official ferry schedule.",
+  "schedule": [
+    {
+      "day": "Weekdays",
+      "departs": "West Point",
+      "times": ["07:00", "08:00", "17:00", "18:00"]
+    },
+    {
+      "day": "Weekdays",
+      "departs": "Garrison",
+      "times": ["07:30", "08:30", "17:30", "18:30"]
+    }
+  ]
+}
