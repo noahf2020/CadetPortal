@@ -5,13 +5,13 @@ A long-term CY300 project: a web portal for West Point cadets made of a **Python
 ## Scope
 
 - **In scope (this repo):** the portal. It shows quick links to common services (Regulation Wizard, Citemate, etc.), ferry hours, the Uniform of the Day (UOD) and announcements.
-- **No login.** Everything in the portal is public, read-only information. Don't add accounts or authentication.
-- **Out of scope:** the cadet quiz/flashcard tool. It will be a **separate site** built later, and the portal may link to it.
+- **Study decks ("Cadet Quizlet") at `/quizlet`:** cadets search flashcard decks by class, instructor, or topic, study them, and make/edit their own. Decks are saved in `server/data/decks.json`. Study modes so far: Flashcards. Possible future modes: Learn, Test, Match.
+- **No login.** Don't add accounts or authentication. Portal info is public and read-only. The only exception is study decks: anyone can create one, and each deck has an **edit code** (stored hashed) that's needed to edit or delete it.
 
 ## Tech Stack
 
 - **Server:** Python 3 + Flask (a REST API that returns JSON)
-- **Webpage:** React (calls the Flask API with `fetch`)
+- **Webpage:** React (calls the Flask API with `fetch`), with `react-router` for page URLs (`/`, `/quizlet`, ...)
 - **Data storage:** JSON files on disk (CSV for simple tables only, if needed). No database for now.
 
 ## Planned Project Layout
@@ -21,12 +21,14 @@ CadetPortal/
 ├── server/              # Flask backend
 │   ├── app.py           # Starts the server and defines routes
 │   ├── storage.py       # Small helpers to read/write JSON data files
-│   ├── data/            # JSON data files (e.g. announcements.json)
+│   ├── decks.py         # Helpers for study decks (search, checks, edit codes)
+│   ├── data/            # JSON data files (e.g. announcements.json, decks.json)
 │   └── requirements.txt # Python dependencies
 ├── client/              # React frontend
 │   └── src/
-│       ├── App.jsx
-│       └── components/  # One component per file
+│       ├── main.jsx     # Starts React inside a BrowserRouter
+│       ├── App.jsx      # Top bar + the list of page routes
+│       └── components/  # One component per file (HomePage, QuizletHome, DeckView, Flashcards, DeckEditor, ...)
 └── CLAUDE.md
 ```
 
