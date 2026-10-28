@@ -58,30 +58,22 @@
     ]
   },
   {
-    "title": "dick and balls",
-    "course": "CYFUCKU",
-    "instructor": "Dr Cookie",
-    "description": "coding",
+    "title": "TEsting",
+    "course": "CCCC",
+    "instructor": "cccc",
+    "description": "wpr 1",
     "cards": [
       {
-        "term": "101",
-        "definition": "test test"
+        "term": "eeasdasd",
+        "definition": "ee"
       },
       {
-        "term": "102",
-        "definition": "test etststweyfbowb"
-      },
-      {
-        "term": "421344231",
-        "definition": "dkjvaglnrfgjkljsdnlgdsf"
-      },
-      {
-        "term": "addd",
-        "definition": "test"
+        "term": "ee",
+        "definition": "eeee"
       }
     ],
     "id": 3,
-    "date": "2026-10-06",
-    "edit_code_hash": "scrypt:32768:8:1$OEsb1kQ2EudFzrDD$2db9bfe8aaf7bf187fcc5b4f0524ae7bc19f4dba4ebfa3c9b882d585c25f1f83f9bace3cddbfc362a5794c8dfd5adc2f12c0e1bff7bca4502b684c77f9832b5d"
+    "date": "2026-10-28",
+    "edit_code_hash": "scrypt:32768:8:1$cpEa7ajUxWVKQzPC$6fa178952d3e312a22ab4abedb08fa0454884ece1d43fc42d4d4153bef0db1aeaa68a76db931e82423e404698d4ec740c337d58eaef5aa71fe840c23c7764854"
   }
 ]
