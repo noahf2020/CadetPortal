@@ -600,6 +600,266 @@ body {
   text-align: center;
 }
 
+/* ---------- Study mode tabs (Flashcards | Learn) ---------- */
+
+.mode-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background-color: var(--border);
+}
+
+.mode-tab {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+/* The selected tab looks like a raised white pill. */
+.mode-tab.active {
+  background-color: #fff;
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+/* "All terms" label on the left, Show/Hide button on the right. */
+.terms-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* The label has a bottom margin for the list below; drop it so it lines up with the button. */
+.terms-header .card-label {
+  margin: 0;
+}
+
+/* Space between the header and the first term when the list is open. */
+.terms-header + .term-row {
+  margin-top: 12px;
+}
+
+/* ---------- Learn mode ---------- */
+
+/* The progress bar and "3 / 10 learned" text above the card. */
+.learn-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.learn-progress-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background-color: var(--border);
+  overflow: hidden; /* keep the fill inside the rounded corners */
+}
+
+.learn-progress-fill {
+  height: 100%;
+  background-color: var(--gold);
+  transition: width 0.3s;
+}
+
+/* The "You learned all the cards" box. */
+.learn-done {
+  text-align: center;
+}
+
+.learn-done h2 {
+  margin-top: 0;
+}
+
+/* ---------- Deck page extras ---------- */
+
+/* Edit / Make a copy / Export buttons in the deck header. */
+.deck-actions {
+  display: flex;
+  flex-wrap: wrap; /* let the buttons drop to a new line on narrow screens */
+  gap: 8px;
+}
+
+/* The row with the mode tabs on the left and "Show definition first" on the right. */
+.study-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* A small box showing which key to press, e.g. [1] or [Enter]. */
+.key-hint {
+  display: inline-block;
+  margin: 0 4px;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.5;
+}
+
+/* A button that looks like a plain link (e.g. "Start over"). */
+.text-button {
+  margin-top: 12px;
+  padding: 4px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.text-button:hover {
+  color: var(--text);
+}
+
+/* ---------- Test study mode (see components/Test.jsx) ---------- */
+
+.test-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.test-box h2 {
+  margin: 0;
+}
+
+.test-box p {
+  margin: 0;
+}
+
+/* The term (or definition) being asked about. */
+.test-prompt {
+  font-size: 28px;
+}
+
+/* The answer buttons, two per row (one per row on phones, see below). */
+.test-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.test-choice {
+  padding: 14px 16px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background-color: #fff;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.test-choice:hover:not(:disabled) {
+  border-color: var(--gold);
+}
+
+.test-choice:disabled {
+  cursor: default;
+}
+
+/* After answering: the right answer turns green, a wrong pick turns red. */
+.test-choice.correct {
+  border-color: #2e8b57;
+  background-color: #e8f5ee;
+}
+
+.test-choice.wrong {
+  border-color: #c0392b;
+  background-color: #fbeaea;
+}
+
+.test-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 600;
+}
+
+.test-setup-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 240px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.test-setup-label select {
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 400;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background-color: #fff;
+}
+
+.test-box .button {
+  align-self: flex-start;
+}
+
+.test-score {
+  font-size: 36px;
+}
+
+/* The list of missed questions on the results screen. */
+.test-missed-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.test-missed-row:last-child {
+  border-bottom: none;
+}
+
+.test-wrong-text {
+  color: #c0392b;
+}
+
+.test-right-text {
+  color: #2e8b57;
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .test-choices,
+  .test-missed-row {
+    grid-template-columns: 1fr;
+  }
+
+  .test-prompt {
+    font-size: 22px;
+  }
+}
+
 /* Row of buttons under the flashcard. */
 .flashcard-controls {
   display: flex;
@@ -640,7 +900,9 @@ body {
   font-size: 14px;
 }
 
-.deck-form input {
+.deck-form input,
+.deck-form select,
+.deck-form textarea {
   padding: 10px 12px;
   font: inherit;
   font-weight: 400;
@@ -648,6 +910,32 @@ body {
   border-radius: 10px;
   background-color: #fff;
   user-select: text; /* the body turns off text selection; turn it back on for typing */
+}
+
+/* The "Import from .txt file" area above the card rows. */
+.import-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+/* The bulk paste box: let it grow taller but not wider. */
+.import-box textarea {
+  resize: vertical;
+  tab-size: 4;
+}
+
+/* Keep the "Add pasted cards" button its natural width, and fade it when there's nothing to add. */
+.import-box .button {
+  align-self: flex-start;
+}
+
+.import-box .button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Two fields side by side (class and instructor). */

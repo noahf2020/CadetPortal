@@ -2,43 +2,34 @@
  * Flashcards.jsx
  *
  * The Flashcards study mode. Cadets see one card at a time, click it to
- * flip between the term and the definition, and move to the next or
+ * flip between the front and the back, and move to the next or
  * previous card. They can also shuffle the deck.
+ *
+ * Keyboard: Space flips the card, Left / Right arrows move between cards.
  */
 
-import { useState } from "react";
-
-/**
- * shuffleCards - makes a shuffled copy of a list of cards.
- * It uses the Fisher-Yates method: go from the end of the list to the start,
- * and swap each card with a random card at or before it.
- * @param {Array} cards - The cards to shuffle.
- * @returns {Array} A new list with the same cards in random order.
- */
-function shuffleCards(cards) {
-  const shuffled = [...cards]; // copy, so the original list is not changed
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const randomIndex = Math.floor(Math.random() * (i + 1));
-    const temporary = shuffled[i];
-    shuffled[i] = shuffled[randomIndex];
-    shuffled[randomIndex] = temporary;
-  }
-  return shuffled;
-}
+import { useEffect, useState } from "react";
+import { shouldIgnoreKey, shuffleList } from "../studyHelpers.js";
 
 /**
  * Flashcards - shows a deck one card at a time.
  * @param {Object} props
- * @param {Array} props.cards - The deck's cards, each { term, definition }.
+ * @param {Array} props.cards - The cards, each { front, back }.
+ * @param {string} props.frontLabel - The small label on the front, e.g. "Term".
+ * @param {string} props.backLabel - The small label on the back, e.g. "Definition".
  * @returns The flashcard, its controls, and a progress counter.
  */
-function Flashcards({ cards }) {
+function Flashcards({ cards, frontLabel, backLabel }) {
   // The cards in the order they are being studied (normal or shuffled).
   const [studyCards, setStudyCards] = useState(cards);
   // Which card is showing, starting at 0.
   const [currentIndex, setCurrentIndex] = useState(0);
-  // true when the definition side is showing.
-  const [showingDefinition, setShowingDefinition] = useState(false);
+  // true when the back of the card is showing.
+  const [showingBack, setShowingBack] = useState(false);
+  // Goes up by one every time a different card is shown. It is used as the
+  // card's "key", so React draws a fresh card instead of animating the old one
+  // back over, which would briefly show the new card's back.
+  const [turnNumber, setTurnNumber] = useState(0);
 
   const currentCard = studyCards[currentIndex];
   const isFirstCard = currentIndex === 0;
@@ -46,70 +37,114 @@ function Flashcards({ cards }) {
 
   /** Flip the current card to its other side. */
   function flipCard() {
-    setShowingDefinition(!showingDefinition);
+    setShowingBack(!showingBack);
   }
 
-  /** Move to the next card, showing its term side first. */
+  /**
+   * Show a card, front side first.
+   * @param {number} index - Which card to show.
+   */
+  function showCard(index) {
+    setCurrentIndex(index);
+    setShowingBack(false);
+    setTurnNumber(turnNumber + 1);
+  }
+
+  /** Move to the next card. */
   function goToNextCard() {
     if (!isLastCard) {
-      setCurrentIndex(currentIndex + 1);
-      setShowingDefinition(false);
+      showCard(currentIndex + 1);
     }
   }
 
-  /** Move back to the previous card, showing its term side first. */
+  /** Move back to the previous card. */
   function goToPreviousCard() {
     if (!isFirstCard) {
-      setCurrentIndex(currentIndex - 1);
-      setShowingDefinition(false);
+      showCard(currentIndex - 1);
     }
   }
 
   /** Shuffle the cards and start again from the first one. */
   function shuffleDeck() {
-    setStudyCards(shuffleCards(cards));
-    setCurrentIndex(0);
-    setShowingDefinition(false);
+    setStudyCards(shuffleList(cards));
+    showCard(0);
   }
 
   /** Put the cards back in their original order and start again. */
   function resetDeck() {
     setStudyCards(cards);
-    setCurrentIndex(0);
-    setShowingDefinition(false);
+    showCard(0);
   }
+
+  // Keyboard shortcuts. The listener is added when the component appears and
+  // removed when it goes away (the "return" function below). It is re-added
+  // whenever the values it uses change, so it always sees the latest state.
+  useEffect(() => {
+    /**
+     * Run the matching action for a key press.
+     * @param {KeyboardEvent} event - The key press.
+     */
+    function handleKeyDown(event) {
+      if (shouldIgnoreKey(event)) {
+        return;
+      }
+      if (event.key === " ") {
+        event.preventDefault(); // stop Space from scrolling the page
+        flipCard();
+      } else if (event.key === "ArrowRight") {
+        goToNextCard();
+      } else if (event.key === "ArrowLeft") {
+        goToPreviousCard();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  });
 
   return (
     <section className="flashcards">
       {/* The "flipped" class turns the card around to show the back side. */}
       <button
-        className={showingDefinition ? "flashcard flipped" : "flashcard"}
+        key={turnNumber}
+        className={showingBack ? "flashcard flipped" : "flashcard"}
         onClick={flipCard}
+        aria-label={showingBack ? backLabel + ": " + currentCard.back : frontLabel + ": " + currentCard.front}
       >
         <div className="flashcard-inner">
           <div className="flashcard-face flashcard-front">
-            <span className="carousel-category">Term</span>
-            <p>{currentCard.term}</p>
+            <span className="carousel-category">{frontLabel}</span>
+            <p>{currentCard.front}</p>
           </div>
           <div className="flashcard-face flashcard-back">
-            <span className="carousel-category">Definition</span>
-            <p>{currentCard.definition}</p>
+            <span className="carousel-category">{backLabel}</span>
+            <p>{currentCard.back}</p>
           </div>
         </div>
       </button>
-      <p className="muted small center-text">Click the card to flip it.</p>
+      <p className="muted small center-text">Click the card or press Space to flip it. Use ← → to move.</p>
 
       <div className="flashcard-controls">
         <button className="button secondary" onClick={resetDeck}>
           Reset
         </button>
-        <button className="carousel-arrow dark" onClick={goToPreviousCard} disabled={isFirstCard}>
+        <button
+          className="carousel-arrow dark"
+          onClick={goToPreviousCard}
+          disabled={isFirstCard}
+          aria-label="Previous card"
+        >
           ◀
         </button>
         <span className="flashcard-count">
           {currentIndex + 1} / {studyCards.length}
         </span>
-        <button className="carousel-arrow dark" onClick={goToNextCard} disabled={isLastCard}>
+        <button
+          className="carousel-arrow dark"
+          onClick={goToNextCard}
+          disabled={isLastCard}
+          aria-label="Next card"
+        >
           ▶
         </button>
         <button className="button secondary" onClick={shuffleDeck}>

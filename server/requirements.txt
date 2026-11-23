@@ -1,1 +1,3 @@
 flask
+# pytest runs the automated tests (python -m pytest). The server does not need it.
+pytest

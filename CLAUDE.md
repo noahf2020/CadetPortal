@@ -5,7 +5,7 @@ A long-term CY300 project: a web portal for West Point cadets made of a **Python
 ## Scope
 
 - **In scope (this repo):** the portal. It shows quick links to common services (Regulation Wizard, Citemate, etc.), ferry hours, the Uniform of the Day (UOD) and announcements.
-- **Study decks ("Cadet Quizlet") at `/quizlet`:** cadets search flashcard decks by class, instructor, or topic, study them, and make/edit their own. Decks are saved in `server/data/decks.json`. Study modes so far: Flashcards. Possible future modes: Learn, Test, Match.
+- **Study decks ("Cadet Quizlet") at `/quizlet`:** cadets search flashcard decks by class, instructor, or topic, study them, and make/edit their own. Decks are saved in `server/data/decks.json`. Study modes: Flashcards, Learn (self-graded, progress saved in localStorage), and Test (multiple choice), switched with tabs on the deck page. Study modes receive cards as `{ front, back }` (DeckView swaps them for "definition first"). Possible future modes: Match.
 - **No login.** Don't add accounts or authentication. Portal info is public and read-only. The only exception is study decks: anyone can create one, and each deck has an **edit code** (stored hashed) that's needed to edit or delete it.
 
 ## Tech Stack
@@ -23,12 +23,16 @@ CadetPortal/
 │   ├── storage.py       # Small helpers to read/write JSON data files
 │   ├── decks.py         # Helpers for study decks (search, checks, edit codes)
 │   ├── data/            # JSON data files (e.g. announcements.json, decks.json)
-│   └── requirements.txt # Python dependencies
+│   ├── conftest.py      # Test setup: a test client with a temporary data folder
+│   ├── tests/           # pytest tests (test_decks.py, test_deck_routes.py)
+│   └── requirements.txt # Python dependencies (flask, pytest)
 ├── client/              # React frontend
 │   └── src/
 │       ├── main.jsx     # Starts React inside a BrowserRouter
 │       ├── App.jsx      # Top bar + the list of page routes
-│       └── components/  # One component per file (HomePage, QuizletHome, DeckView, Flashcards, DeckEditor, ...)
+│       ├── studyHelpers.js # Shared non-component helpers (shuffle, keyboard checks, .txt export)
+│       └── components/  # One component per file (HomePage, QuizletHome, DeckView, Flashcards, Learn, Test, DeckEditor, ...)
+├── README.md
 └── CLAUDE.md
 ```
 
@@ -73,6 +77,8 @@ Use two terminals, one for each part:
 
 - Server: `cd server`, `pip install -r requirements.txt` (first time only), then `python app.py`. It runs on http://localhost:5000.
 - Webpage: `cd client`, `npm install` (first time only), then `npm run dev`. Open http://localhost:5173.
+
+Tests: `cd server`, then `python -m pytest`. Add or update tests when changing `decks.py` or the deck routes.
 
 The Vite dev server forwards every `/api/...` request to Flask (see `client/vite.config.js`), so React code calls `fetch("/api/...")` with no full URL and no CORS setup.
 

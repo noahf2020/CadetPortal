@@ -73,19 +73,26 @@ def deck_matches_search(deck, search_text):
 
     Returns:
         bool: True if the search text appears in the deck's title, course,
-              instructor, or description (upper/lower case does not matter).
+              instructor, description, or any card's term or definition
+              (upper/lower case does not matter).
     """
     search_text = search_text.strip().lower()
     if search_text == "":
         return True
 
-    # Put all the searchable fields together into one lowercase string.
-    searchable_text = " ".join([
+    # Collect every searchable piece of text: the deck details, then every card.
+    searchable_parts = [
         deck["title"],
         deck["course"],
         deck["instructor"],
         deck["description"],
-    ]).lower()
+    ]
+    for card in deck["cards"]:
+        searchable_parts.append(card["term"])
+        searchable_parts.append(card["definition"])
+
+    # Join them with a newline so a search can't match across two fields by accident.
+    searchable_text = "\n".join(searchable_parts).lower()
 
     return search_text in searchable_text
 

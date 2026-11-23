@@ -84,7 +84,8 @@ def get_announcements():
 
 
 # GET /api/decks?search=cy300
-# "search" is optional. It matches the title, course, instructor, or description.
+# "search" is optional. It matches the title, course, instructor, description,
+# or the text of any card.
 # Response: a list of deck summaries,
 #   e.g. [{ "id", "title", "course", "instructor", "description", "date", "card_count" }]
 @app.route("/api/decks", methods=["GET"])

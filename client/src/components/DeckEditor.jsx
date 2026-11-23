@@ -4,12 +4,15 @@
  * The form for making a new deck (URL "/quizlet/new") or editing one
  * (URL "/quizlet/:deckId/edit").
  *   - New deck:  sends POST /api/decks. The cadet picks an edit code.
+ *   - Copy deck: a new deck that starts filled in with another deck's details.
+ *                The deck page's "Make a copy" button opens "/quizlet/new"
+ *                and passes the deck along as { copyFrom: deck }.
  *   - Edit deck: loads GET /api/decks/:deckId, then sends PUT (save) or
  *                DELETE (delete). The cadet must type the deck's edit code.
  */
 
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 
 /**
  * makeBlankCard - creates an empty card for a new row in the form.
@@ -17,6 +20,60 @@ import { Link, useNavigate, useParams } from "react-router";
  */
 function makeBlankCard() {
   return { term: "", definition: "" };
+}
+
+// The separators a cadet can pick when importing a .txt file.
+// "custom" means: use whatever the cadet types in the custom box.
+const SEPARATOR_OPTIONS = {
+  tab: "\t",
+  comma: ",",
+  dash: " - ",
+  custom: "",
+};
+
+/**
+ * parseCardsFromText - turns the text of an imported file into cards.
+ * Each line is one card. The term is everything before the FIRST separator,
+ * and the definition is everything after it (so definitions may contain the separator).
+ * @param {string} text - The full text of the file.
+ * @param {string} separator - What splits the term from the definition (e.g. a tab).
+ * @returns {Object} { cards: [...], skippedLines: number } - the cards found, and how
+ *   many non-empty lines had no separator and were skipped.
+ */
+function parseCardsFromText(text, separator) {
+  const importedCards = [];
+  let skippedLines = 0;
+
+  // Windows files end lines with "\r\n", others with "\n". Split on either.
+  const lines = text.split(/\r?\n/);
+
+  for (const line of lines) {
+    // Skip blank lines.
+    if (line.trim() === "") {
+      continue;
+    }
+
+    const separatorIndex = line.indexOf(separator);
+    if (separatorIndex === -1) {
+      skippedLines = skippedLines + 1;
+      continue;
+    }
+
+    const term = line.slice(0, separatorIndex).trim();
+    const definition = line.slice(separatorIndex + separator.length).trim();
+    importedCards.push({ term: term, definition: definition });
+  }
+
+  return { cards: importedCards, skippedLines: skippedLines };
+}
+
+/**
+ * isBlankCard - checks if a card has no term and no definition.
+ * @param {Object} card - The card to check.
+ * @returns {boolean} True if both fields are empty.
+ */
+function isBlankCard(card) {
+  return card.term.trim() === "" && card.definition.trim() === "";
 }
 
 /**
@@ -29,16 +86,31 @@ function DeckEditor() {
   const isEditing = deckId !== undefined;
   // navigate("/some/url") sends the cadet to another page.
   const navigate = useNavigate();
+  // The deck to copy, if the cadet clicked "Make a copy" on a deck page.
+  // location.state is whatever the link passed along (null if nothing).
+  const location = useLocation();
+  let copyFrom = null;
+  if (!isEditing && location.state && location.state.copyFrom) {
+    copyFrom = location.state.copyFrom;
+  }
 
-  // One piece of state for each form field.
-  const [title, setTitle] = useState("");
-  const [course, setCourse] = useState("");
-  const [instructor, setInstructor] = useState("");
-  const [description, setDescription] = useState("");
-  const [cards, setCards] = useState([makeBlankCard(), makeBlankCard()]);
+  // One piece of state for each form field. A copy starts with the other
+  // deck's details; a brand new deck starts empty.
+  const [title, setTitle] = useState(copyFrom ? "Copy of " + copyFrom.title : "");
+  const [course, setCourse] = useState(copyFrom ? copyFrom.course : "");
+  const [instructor, setInstructor] = useState(copyFrom ? copyFrom.instructor : "");
+  const [description, setDescription] = useState(copyFrom ? copyFrom.description : "");
+  const [cards, setCards] = useState(copyFrom ? copyFrom.cards : [makeBlankCard(), makeBlankCard()]);
   const [editCode, setEditCode] = useState("");
   // A message from the server if saving fails, e.g. "Title is required."
   const [errorMessage, setErrorMessage] = useState("");
+  // Import from .txt: which separator is picked (defaults to tab), the text of a
+  // custom separator, and a message saying how the last import went.
+  const [separatorChoice, setSeparatorChoice] = useState("tab");
+  const [customSeparator, setCustomSeparator] = useState("");
+  const [importMessage, setImportMessage] = useState("");
+  // The text in the bulk paste box.
+  const [pastedText, setPastedText] = useState("");
 
   // When editing, load the deck once and fill in the form with its details.
   useEffect(() => {
@@ -90,6 +162,81 @@ function DeckEditor() {
       }
     }
     setCards(remainingCards);
+  }
+
+  /**
+   * Get the separator the cadet picked in the dropdown (or typed in the custom box).
+   * @returns {string} The separator, or "" if "Custom" is picked but nothing is typed.
+   */
+  function getSeparator() {
+    if (separatorChoice === "custom") {
+      return customSeparator;
+    }
+    return SEPARATOR_OPTIONS[separatorChoice];
+  }
+
+  /**
+   * Turn imported text (from a file or a paste) into cards and add them to the form.
+   * Empty card rows in the form are dropped so the imported cards don't sit
+   * below blank rows. Cards the cadet already typed are kept.
+   * @param {string} text - The text to import, one card per line.
+   * @returns {boolean} True if at least one card was added.
+   */
+  function addCardsFromText(text) {
+    const separator = getSeparator();
+    if (separator === "") {
+      setImportMessage("Type a custom separator before importing.");
+      return false;
+    }
+
+    const result = parseCardsFromText(text, separator);
+    if (result.cards.length === 0) {
+      setImportMessage("No cards found. Check that the separator matches your text.");
+      return false;
+    }
+
+    // Keep only the cards that already have something typed in them.
+    const filledCards = [];
+    for (const card of cards) {
+      if (!isBlankCard(card)) {
+        filledCards.push(card);
+      }
+    }
+    setCards([...filledCards, ...result.cards]);
+
+    let message = "Imported " + result.cards.length + " card(s).";
+    if (result.skippedLines > 0) {
+      message = message + " Skipped " + result.skippedLines + " line(s) with no separator.";
+    }
+    setImportMessage(message);
+    return true;
+  }
+
+  /**
+   * Read a .txt file the cadet picked and add its lines as cards.
+   * @param {Event} event - The file input's change event.
+   */
+  function importFromFile(event) {
+    const file = event.target.files[0];
+    // Clear the input so picking the same file again still triggers an import.
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+
+    // FileReader reads the file in the browser. onload runs once it is done.
+    const reader = new FileReader();
+    reader.onload = () => addCardsFromText(reader.result);
+    reader.onerror = () => setImportMessage("Could not read that file.");
+    reader.readAsText(file);
+  }
+
+  /** Add the cards from the bulk paste box, then empty the box if it worked. */
+  function importFromPaste() {
+    const added = addCardsFromText(pastedText);
+    if (added) {
+      setPastedText("");
+    }
   }
 
   /**
@@ -158,6 +305,11 @@ function DeckEditor() {
     <main className="page">
       <Link to={cancelUrl} className="back-link">← Cancel</Link>
       <h1 className="page-title">{isEditing ? "Edit deck" : "New deck"}</h1>
+      {copyFrom && (
+        <p className="muted">
+          Copying "{copyFrom.title}". Change anything you like, then pick your own edit code.
+        </p>
+      )}
 
       <form className="card deck-form" onSubmit={saveDeck}>
         <label>
@@ -182,6 +334,56 @@ function DeckEditor() {
         </label>
 
         <p className="card-label">Cards</p>
+
+        {/* Import cards from a .txt file: one card per line, term and definition split by a separator. */}
+        <div className="import-box">
+          <div className="form-row">
+            <label>
+              Split term and definition by
+              <select value={separatorChoice} onChange={(event) => setSeparatorChoice(event.target.value)}>
+                <option value="tab">Tab</option>
+                <option value="comma">Comma ( , )</option>
+                <option value="dash">Dash ( - )</option>
+                <option value="custom">Custom…</option>
+              </select>
+            </label>
+            {separatorChoice === "custom" && (
+              <label>
+                Custom separator
+                <input
+                  value={customSeparator}
+                  onChange={(event) => setCustomSeparator(event.target.value)}
+                  placeholder="e.g. ;"
+                />
+              </label>
+            )}
+          </div>
+          <label>
+            Import from .txt file
+            <input type="file" accept=".txt,text/plain" onChange={importFromFile} />
+          </label>
+          <label>
+            Or paste cards
+            <textarea
+              rows={5}
+              value={pastedText}
+              onChange={(event) => setPastedText(event.target.value)}
+              placeholder={"SPC\tSpecialist\nSGT\tSergeant"}
+            />
+          </label>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={importFromPaste}
+            disabled={pastedText.trim() === ""}
+          >
+            Add pasted cards
+          </button>
+          <span className="muted small">One card per line. Imported cards are added after any cards you already typed.</span>
+          {/* aria-live makes screen readers announce the message when it changes. */}
+          <span className="small" aria-live="polite">{importMessage}</span>
+        </div>
+
         {cards.map((card, index) => (
           <div key={index} className="card-row">
             <span className="card-number">{index + 1}</span>
@@ -189,13 +391,21 @@ function DeckEditor() {
               value={card.term}
               onChange={(event) => updateCard(index, "term", event.target.value)}
               placeholder="Term"
+              aria-label={"Card " + (index + 1) + " term"}
             />
             <input
               value={card.definition}
               onChange={(event) => updateCard(index, "definition", event.target.value)}
               placeholder="Definition"
+              aria-label={"Card " + (index + 1) + " definition"}
             />
-            <button type="button" className="remove-button" onClick={() => removeCard(index)} title="Remove card">
+            <button
+              type="button"
+              className="remove-button"
+              onClick={() => removeCard(index)}
+              title="Remove card"
+              aria-label={"Remove card " + (index + 1)}
+            >
               ✕
             </button>
           </div>
@@ -219,7 +429,7 @@ function DeckEditor() {
           </span>
         </label>
 
-        {errorMessage !== "" && <p className="error-message">{errorMessage}</p>}
+        {errorMessage !== "" && <p className="error-message" role="alert">{errorMessage}</p>}
 
         <div className="form-buttons">
           <button type="submit" className="button">
