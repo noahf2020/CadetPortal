@@ -1,0 +1,6 @@
+# Python packages Vercel installs for the online server (api/index.py).
+# Keep this list the same as server/requirements.txt (minus pytest).
+flask
+pymysql
+certifi
+python-dotenv

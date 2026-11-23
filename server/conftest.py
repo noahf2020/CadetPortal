@@ -4,36 +4,75 @@ conftest.py
 Shared setup for the server's tests (pytest reads this file automatically).
 Run the tests from the "server" folder with:  python -m pytest
 
-It gives tests a "client" that can call the API without starting the server.
-The client uses a temporary data folder, so tests never change the real
-files in server/data/.
+The route tests need a real MySQL database. To keep the real data safe, they
+use a SEPARATE test database (TEST_DB_NAME in server/.env, default
+"cadet_portal_test") on the same server, and empty its deck tables before
+every test. If no database is set up (no DB_HOST), those tests are skipped.
 """
 
-import json
+import os
 
 import pytest
 
-import storage
-from app import app
+import db
+from setup_database import create_tables
+
+
+@pytest.fixture(scope="session")
+def test_database():
+    """
+    Point the app at the test database and create its tables.
+    Runs once for the whole test run (scope="session").
+    """
+    if os.environ.get("DB_HOST", "") == "":
+        pytest.skip("No database set up (DB_HOST is empty in server/.env), so the route tests were skipped.")
+
+    test_database_name = os.environ.get("TEST_DB_NAME", "cadet_portal_test")
+    real_database_name = os.environ.get("DB_NAME", "cadet_portal")
+    if test_database_name == real_database_name:
+        pytest.exit("TEST_DB_NAME must be different from DB_NAME, so tests can't erase real data.")
+
+    # Create the test database, then make every connection use it.
+    connection = db.get_connection(use_database=False)
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("CREATE DATABASE IF NOT EXISTS `" + test_database_name + "`")
+        connection.commit()
+    finally:
+        connection.close()
+    os.environ["DB_NAME"] = test_database_name
+
+    connection = db.get_connection()
+    try:
+        create_tables(connection)
+    finally:
+        connection.close()
+
+    yield  # the tests run here
+
+    # Put the real database name back when the tests are done.
+    os.environ["DB_NAME"] = real_database_name
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
+def client(test_database):
     """
-    Make a test client that uses an empty, temporary decks.json.
-
-    Parameters:
-        tmp_path: A new empty folder for this test (given by pytest).
-        monkeypatch: Lets the test swap a value just for this test (given by pytest).
+    Make a test client with no decks in the test database.
 
     Returns:
         A Flask test client. Use it like client.get("/api/decks").
     """
-    # Start with no decks.
-    decks_file = tmp_path / "decks.json"
-    decks_file.write_text(json.dumps([]), encoding="utf-8")
+    # Start each test with empty deck tables.
+    connection = db.get_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("DELETE FROM cards")
+            cursor.execute("DELETE FROM decks")
+        connection.commit()
+    finally:
+        connection.close()
 
-    # Point storage.py at the temporary folder instead of server/data/.
-    monkeypatch.setattr(storage, "DATA_FOLDER", str(tmp_path))
+    # Imported here so the app is only loaded when a database is available.
+    from app import app
 
     return app.test_client()

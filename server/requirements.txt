@@ -1,3 +1,9 @@
 flask
+# pymysql talks to the MySQL (TiDB Cloud) database.
+pymysql
+# certifi lets the database connection check TiDB's SSL certificate.
+certifi
+# python-dotenv reads the database settings from server/.env on your computer.
+python-dotenv
 # pytest runs the automated tests (python -m pytest). The server does not need it.
 pytest

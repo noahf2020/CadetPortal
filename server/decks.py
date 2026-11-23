@@ -2,19 +2,8 @@
 decks.py
 
 Helper functions for the study decks (the portal's Quizlet).
-The routes in app.py use these helpers to search, check, and clean up decks.
-
-A deck looks like this in data/decks.json:
-    {
-        "id": 1,
-        "title": "Military Ranks",
-        "course": "MS100",
-        "instructor": "CPT Smith",
-        "description": "Army rank abbreviations.",
-        "edit_code_hash": "scrypt:...",
-        "date": "2026-10-06",
-        "cards": [{ "term": "CPT", "definition": "Captain" }]
-    }
+The routes in app.py use these to check and clean up what the webpage sends,
+and to handle edit codes. Saving and loading decks is in storage.py.
 
 The edit code is never saved as plain text. Only a "hash" of it is saved
 (a scrambled version that can be checked but not turned back into the code).
@@ -25,110 +14,14 @@ from werkzeug.security import check_password_hash, generate_password_hash
 # The shortest edit code we accept.
 MIN_EDIT_CODE_LENGTH = 4
 
-
-def make_public_deck(deck):
-    """
-    Make a copy of a deck that is safe to send to the webpage.
-
-    Parameters:
-        deck (dict): A deck from decks.json.
-
-    Returns:
-        dict: The same deck without the "edit_code_hash" field.
-    """
-    public_deck = dict(deck)  # copy, so the original deck is not changed
-    public_deck.pop("edit_code_hash", None)
-    return public_deck
-
-
-def make_deck_summary(deck):
-    """
-    Make a short version of a deck for the search results list.
-
-    Parameters:
-        deck (dict): A deck from decks.json.
-
-    Returns:
-        dict: The deck's id, title, course, instructor, description, date,
-              and how many cards it has (but not the cards themselves).
-    """
-    return {
-        "id": deck["id"],
-        "title": deck["title"],
-        "course": deck["course"],
-        "instructor": deck["instructor"],
-        "description": deck["description"],
-        "date": deck["date"],
-        "card_count": len(deck["cards"]),
-    }
-
-
-def deck_matches_search(deck, search_text):
-    """
-    Check whether a deck matches what the cadet typed in the search box.
-
-    Parameters:
-        deck (dict): A deck from decks.json.
-        search_text (str): The search words. An empty string matches every deck.
-
-    Returns:
-        bool: True if the search text appears in the deck's title, course,
-              instructor, description, or any card's term or definition
-              (upper/lower case does not matter).
-    """
-    search_text = search_text.strip().lower()
-    if search_text == "":
-        return True
-
-    # Collect every searchable piece of text: the deck details, then every card.
-    searchable_parts = [
-        deck["title"],
-        deck["course"],
-        deck["instructor"],
-        deck["description"],
-    ]
-    for card in deck["cards"]:
-        searchable_parts.append(card["term"])
-        searchable_parts.append(card["definition"])
-
-    # Join them with a newline so a search can't match across two fields by accident.
-    searchable_text = "\n".join(searchable_parts).lower()
-
-    return search_text in searchable_text
-
-
-def find_deck(decks, deck_id):
-    """
-    Find one deck in a list of decks by its id.
-
-    Parameters:
-        decks (list): All decks from decks.json.
-        deck_id (int): The id of the deck to find.
-
-    Returns:
-        dict or None: The matching deck, or None if there is no such deck.
-    """
-    for deck in decks:
-        if deck["id"] == deck_id:
-            return deck
-    return None
-
-
-def get_next_deck_id(decks):
-    """
-    Pick the id for a new deck: one more than the biggest id in use.
-
-    Parameters:
-        decks (list): All decks from decks.json.
-
-    Returns:
-        int: The new id (1 if there are no decks yet).
-    """
-    biggest_id = 0
-    for deck in decks:
-        if deck["id"] > biggest_id:
-            biggest_id = deck["id"]
-    return biggest_id + 1
+# The longest text we accept for each field. These match the column sizes in
+# setup_database.py, so the database never gets text that is too long.
+MAX_TITLE_LENGTH = 200
+MAX_COURSE_LENGTH = 50
+MAX_INSTRUCTOR_LENGTH = 200
+MAX_DESCRIPTION_LENGTH = 1000
+MAX_CARD_TEXT_LENGTH = 1000
+MAX_CARDS = 500
 
 
 def clean_cards(cards):
@@ -161,12 +54,36 @@ def clean_cards(cards):
         if term == "" or definition == "":
             return [], "Every card needs both a term and a definition."
 
+        if len(term) > MAX_CARD_TEXT_LENGTH or len(definition) > MAX_CARD_TEXT_LENGTH:
+            message = "Each term and definition must be " + str(MAX_CARD_TEXT_LENGTH) + " characters or less."
+            return [], message
+
         cleaned_cards.append({"term": term, "definition": definition})
 
     if len(cleaned_cards) == 0:
         return [], "A deck needs at least one card."
 
+    if len(cleaned_cards) > MAX_CARDS:
+        return [], "A deck can have at most " + str(MAX_CARDS) + " cards."
+
     return cleaned_cards, None
+
+
+def check_length(value, max_length, field_name):
+    """
+    Check that a piece of text is not too long.
+
+    Parameters:
+        value (str): The text to check.
+        max_length (int): The most characters allowed.
+        field_name (str): The field's name for the error message, e.g. "Title".
+
+    Returns:
+        str or None: An error message, or None if the text is short enough.
+    """
+    if len(value) > max_length:
+        return field_name + " must be " + str(max_length) + " characters or less."
+    return None
 
 
 def clean_deck_input(data):
@@ -194,6 +111,17 @@ def clean_deck_input(data):
     if course == "":
         return {}, "Course is required (for example, CY300)."
 
+    # Check each field's length. The first error found is returned.
+    length_checks = [
+        check_length(title, MAX_TITLE_LENGTH, "Title"),
+        check_length(course, MAX_COURSE_LENGTH, "Class"),
+        check_length(instructor, MAX_INSTRUCTOR_LENGTH, "Instructor"),
+        check_length(description, MAX_DESCRIPTION_LENGTH, "Description"),
+    ]
+    for error in length_checks:
+        if error is not None:
+            return {}, error
+
     cards, error = clean_cards(data.get("cards"))
     if error is not None:
         return {}, error
@@ -210,7 +138,7 @@ def clean_deck_input(data):
 
 def hash_edit_code(edit_code):
     """
-    Turn an edit code into a hash that is safe to save in the JSON file.
+    Turn an edit code into a hash that is safe to save in the database.
 
     Parameters:
         edit_code (str): The code the deck creator picked.
@@ -221,12 +149,12 @@ def hash_edit_code(edit_code):
     return generate_password_hash(edit_code)
 
 
-def edit_code_is_correct(deck, edit_code):
+def edit_code_is_correct(edit_code_hash, edit_code):
     """
     Check whether an edit code matches the one saved for a deck.
 
     Parameters:
-        deck (dict): A deck from decks.json.
+        edit_code_hash (str): The deck's saved hash (from storage.load_edit_code_hash).
         edit_code: The code sent by the webpage.
 
     Returns:
@@ -234,4 +162,4 @@ def edit_code_is_correct(deck, edit_code):
     """
     if not isinstance(edit_code, str):
         return False
-    return check_password_hash(deck["edit_code_hash"], edit_code)
+    return check_password_hash(edit_code_hash, edit_code)
