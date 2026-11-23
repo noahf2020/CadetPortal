@@ -27,9 +27,9 @@ CadetPortal/
 │   ├── db.py            # Opens MySQL connections; fetch_all / fetch_one helpers
 │   ├── storage.py       # Every query that reads or saves data
 │   ├── decks.py         # Study deck input checks and edit codes
-│   ├── setup_database.py # Run once: creates the tables and loads data/*.json
+│   ├── setup_database.py # Run once: creates the tables and fills empty ones from starting_data.py
+│   ├── starting_data.py # Data a NEW database starts with (links, ferry, shuttle, example decks)
 │   ├── update_uod.py    # Manual UOD update: python update_uod.py "Class B" "notes" (uses storage.save_uod)
-│   ├── data/            # Starting data (JSON), only used by setup_database.py
 │   ├── .env.example     # Template for server/.env (database settings; .env is never committed)
 │   ├── conftest.py      # Test setup: uses a separate test database
 │   ├── tests/           # pytest tests (test_decks.py, test_deck_routes.py)
@@ -70,7 +70,8 @@ Keep this layout up to date if the structure changes.
 - Tables: `links`, `announcements`, `uod` (one row, id 1), `schedules` (ferry and shuttle, each stored whole as JSON), `decks`, `cards`. They are defined in `setup_database.py`.
 - All database reading and writing goes through the functions in `storage.py`. Routes should not run SQL directly.
 - Always pass values with `%s` placeholders (never build SQL by adding strings together) so queries are safe from SQL injection.
-- `storage.py` returns the same shapes the old JSON files had. Dates are sent as text, e.g. `"2026-10-01"`.
+- The database is the only place data lives; there are no data files. `starting_data.py` is only copied into empty tables by `setup_database.py`.
+- `storage.py` returns plain lists and dicts in the shapes documented above each route in `app.py`. Dates are sent as text, e.g. `"2026-10-01"`.
 - Example announcement record:
   ```json
   { "id": 1, "title": "Formation Change", "body": "Formation is at 0645 tomorrow.", "author": "CPT Smith", "date": "2026-10-01" }

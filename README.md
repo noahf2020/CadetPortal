@@ -96,7 +96,7 @@ Keep `TEST_DB_NAME` different from `DB_NAME`, because the tests empty the deck t
 
 ### 2. Server (runs on http://localhost:5000)
 
-First time only: install the packages, then create the tables and load the starting data from `server/data/`:
+First time only: install the packages, then create the tables and add the starting data (quick links, ferry and shuttle schedules, and two example decks from `server/starting_data.py`):
 ```
 cd server
 python -m pip install -r requirements.txt
@@ -121,7 +121,7 @@ The webpage's dev server forwards every `/api/...` request to Flask, so both mus
 
 ### 4. Check that it works
 
-1. Open http://localhost:5173. You should see the quick links, UOD, ferry, shuttle, and announcements.
+1. Open http://localhost:5173. You should see the quick links, ferry, and shuttle times. A new database has no UOD or announcements yet: set the UOD with `python update_uod.py "Class B"` (see below).
 2. Go to **Study Decks**, then **+ New deck**. Paste a few `term<TAB>definition` lines, click **Preview pasted cards**, then **Add**. Pick an edit code and click **Create deck**.
 3. Reload the deck page. The deck is still there.
 4. Go back to **Study Decks** and search for one of your terms. The deck shows up.
@@ -170,12 +170,12 @@ CadetPortal/
 │   ├── db.py                # Connects to the MySQL database
 │   ├── storage.py           # Every query that reads or saves data
 │   ├── decks.py             # Study deck input checks and edit codes
-│   ├── setup_database.py    # Creates the tables and loads the starting data
+│   ├── setup_database.py    # Creates the tables and adds the starting data
+│   ├── starting_data.py     # The data a new database starts with
 │   ├── update_uod.py        # Manually updates the Uniform of the Day
 │   ├── .env.example         # Template for server/.env (database settings)
 │   ├── conftest.py          # Test setup (separate test database)
-│   ├── tests/               # Automated tests (pytest)
-│   └── data/                # Starting data (JSON) for setup_database.py
+│   └── tests/               # Automated tests (pytest)
 └── client/                  # React frontend
     ├── package.json         # Frontend dependencies
     └── src/

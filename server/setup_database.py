@@ -7,19 +7,18 @@ Run this ONCE (from the server folder) to set up the MySQL database:
 It:
   1. creates the database (DB_NAME from server/.env) if it doesn't exist,
   2. creates every table if it doesn't exist,
-  3. fills each EMPTY table with the starting data from the JSON files in
-     server/data/ (links, ferry, shuttle, UOD, announcements, decks).
+  3. fills the links, schedules (ferry + shuttle), and decks tables with the
+     starting data in starting_data.py, if they are still empty.
 
 Tables that already have data are left alone, so running it again is safe.
+The Uniform of the Day and announcements start empty (see starting_data.py).
 """
 
 import json
 import os
 
 from db import get_connection
-
-# Folder with the starting data (the JSON files the portal used before MySQL).
-DATA_FOLDER = os.path.join(os.path.dirname(__file__), "data")
+from starting_data import STARTING_DECKS, STARTING_FERRY, STARTING_LINKS, STARTING_SHUTTLE
 
 # The SQL that creates each table.
 # The odd-looking /*T![auto_id_cache] AUTO_ID_CACHE=1 */ is a TiDB setting that
@@ -125,31 +124,10 @@ def table_is_empty(cursor, table_name):
     return cursor.fetchone()["row_count"] == 0
 
 
-def load_starting_data(file_name):
-    """
-    Read one of the JSON files in server/data/.
-
-    Parameters:
-        file_name (str): e.g. "links.json".
-
-    Returns:
-        The data in the file (a list or a dict).
-    """
-    with open(os.path.join(DATA_FOLDER, file_name), "r", encoding="utf-8") as file:
-        return json.load(file)
-
-
-def blank_to_none(text):
-    """Turn an empty date like "" into None, which the database saves as NULL."""
-    if text == "":
-        return None
-    return text
-
-
 def fill_links(cursor):
-    """Copy links.json into the links table."""
+    """Add the starting quick links to the links table."""
     position = 0
-    for link in load_starting_data("links.json"):
+    for link in STARTING_LINKS:
         cursor.execute(
             "INSERT INTO links (position, name, description, url, category) VALUES (%s, %s, %s, %s, %s)",
             (position, link["name"], link["description"], link["url"], link["category"]),
@@ -157,46 +135,28 @@ def fill_links(cursor):
         position = position + 1
 
 
-def fill_announcements(cursor):
-    """Copy announcements.json into the announcements table."""
-    for announcement in load_starting_data("announcements.json"):
-        cursor.execute(
-            "INSERT INTO announcements (title, body, author, date) VALUES (%s, %s, %s, %s)",
-            (announcement["title"], announcement["body"], announcement["author"],
-             blank_to_none(announcement["date"])),
-        )
-
-
-def fill_uod(cursor):
-    """Copy uod.json into the uod table (always id 1)."""
-    uod = load_starting_data("uod.json")
-    cursor.execute(
-        "INSERT INTO uod (id, date, uniform, notes) VALUES (1, %s, %s, %s)",
-        (blank_to_none(uod["date"]), uod["uniform"], uod["notes"]),
-    )
-
-
 def fill_schedules(cursor):
-    """Copy ferry.json and shuttle.json into the schedules table."""
-    for name in ["ferry", "shuttle"]:
-        schedule = load_starting_data(name + ".json")
+    """Add the starting ferry and shuttle schedules to the schedules table."""
+    starting_schedules = [("ferry", STARTING_FERRY), ("shuttle", STARTING_SHUTTLE)]
+    for name, schedule in starting_schedules:
         cursor.execute(
             "INSERT INTO schedules (name, data) VALUES (%s, %s)",
+            # json.dumps turns the Python dict into JSON text for the JSON column.
             (name, json.dumps(schedule)),
         )
 
 
 def fill_decks(cursor):
     """
-    Copy decks.json into the decks and cards tables. The ids and edit code
-    hashes are kept, so old links and edit codes still work.
+    Add the example decks to the decks and cards tables. Their ids are kept,
+    so links like /quizlet/1 always point to the same deck.
     """
-    for deck in load_starting_data("decks.json"):
+    for deck in STARTING_DECKS:
         cursor.execute(
             """INSERT INTO decks (id, title, course, instructor, description, edit_code_hash, date)
                VALUES (%s, %s, %s, %s, %s, %s, %s)""",
             (deck["id"], deck["title"], deck["course"], deck["instructor"], deck["description"],
-             deck["edit_code_hash"], blank_to_none(deck["date"])),
+             deck["edit_code_hash"], deck["date"]),
         )
         position = 0
         for card in deck["cards"]:
@@ -218,8 +178,6 @@ def fill_empty_tables(connection):
     # (cards is filled together with decks.)
     tables_to_fill = [
         ("links", fill_links),
-        ("announcements", fill_announcements),
-        ("uod", fill_uod),
         ("schedules", fill_schedules),
         ("decks", fill_decks),
     ]

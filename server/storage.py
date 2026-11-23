@@ -5,8 +5,8 @@ Every function that reads or saves the portal's data. The data lives in a
 MySQL database (see db.py for the connection and setup_database.py for the tables).
 Routes in app.py call these functions and never write SQL themselves.
 
-Each function returns plain Python lists and dicts shaped exactly like the
-old JSON files, so the React webpage did not need to change.
+Each function returns plain Python lists and dicts, which Flask sends to the
+React webpage as JSON (see the route comments in app.py for each shape).
 """
 
 import json
