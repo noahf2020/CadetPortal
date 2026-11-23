@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { fetchJson } from "../api.js";
 
 /**
  * QuizletHome - a search box and a grid of matching decks.
@@ -18,14 +19,18 @@ function QuizletHome() {
   const [searchText, setSearchText] = useState("");
   // The decks that match the search. It is null until the server responds.
   const [decks, setDecks] = useState(null);
+  // A message to show if the decks could not be loaded.
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Ask the server for matching decks every time the search text changes.
   useEffect(() => {
     // encodeURIComponent makes spaces and symbols safe to put in a URL.
-    fetch("/api/decks?search=" + encodeURIComponent(searchText))
-      .then((response) => response.json())
-      .then((data) => setDecks(data))
-      .catch((error) => console.error("Could not load decks:", error));
+    fetchJson("/api/decks?search=" + encodeURIComponent(searchText))
+      .then((data) => {
+        setDecks(data);
+        setErrorMessage("");
+      })
+      .catch((error) => setErrorMessage("Couldn't load decks. " + error.message));
   }, [searchText]);
 
   return (
@@ -48,7 +53,9 @@ function QuizletHome() {
         onChange={(event) => setSearchText(event.target.value)}
       />
 
-      <DeckList decks={decks} />
+      {errorMessage !== "" && <p className="error-message" role="alert">{errorMessage}</p>}
+      {/* While there is an error and no decks were ever loaded, don't show "Loading..." forever. */}
+      {!(errorMessage !== "" && decks === null) && <DeckList decks={decks} />}
     </main>
   );
 }

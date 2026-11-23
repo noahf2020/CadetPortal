@@ -15,6 +15,7 @@ import Flashcards from "./Flashcards.jsx";
 import Learn from "./Learn.jsx";
 import Test from "./Test.jsx";
 import { downloadTextFile, makeDeckText } from "../studyHelpers.js";
+import { fetchJson } from "../api.js";
 
 // The study mode tabs, in the order they appear.
 const STUDY_MODES = [
@@ -62,24 +63,17 @@ function DeckView() {
 
   // Ask the server for this deck when the page appears (or the id changes).
   useEffect(() => {
-    fetch("/api/decks/" + deckId)
-      .then((response) => response.json())
-      .then((data) => {
-        // The server sends { "error": "..." } if the deck does not exist.
-        if (data.error) {
-          setErrorMessage(data.error);
-        } else {
-          setDeck(data);
-        }
-      })
-      .catch((error) => console.error("Could not load deck:", error));
+    fetchJson("/api/decks/" + deckId)
+      .then((data) => setDeck(data))
+      // e.g. "Deck not found." (404) or "Couldn't reach the server..."
+      .catch((error) => setErrorMessage("Couldn't load this deck. " + error.message));
   }, [deckId]);
 
   if (errorMessage !== "") {
     return (
       <main className="page">
-        <p>{errorMessage}</p>
-        <Link to="/quizlet">← Back to all decks</Link>
+        <Link to="/quizlet" className="back-link">← All decks</Link>
+        <p className="error-message" role="alert">{errorMessage}</p>
       </main>
     );
   }

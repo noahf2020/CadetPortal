@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { fetchJson } from "../api.js";
 
 /**
  * ShuttleTimes - shows the Northbound and Southbound routes side by side.
@@ -15,21 +16,26 @@ import { useEffect, useState } from "react";
 function ShuttleTimes() {
   // The shuttle data. It is null until the server responds.
   const [shuttle, setShuttle] = useState(null);
+  // A message to show if the schedule could not be loaded.
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Ask the server for the shuttle schedule once, when the component first appears.
   useEffect(() => {
-    fetch("/api/shuttle")
-      .then((response) => response.json())
+    fetchJson("/api/shuttle")
       .then((data) => setShuttle(data))
-      .catch((error) => console.error("Could not load shuttle times:", error));
+      .catch((error) => setErrorMessage("Couldn't load shuttle times. " + error.message));
   }, []);
 
-  // Show a loading message until the data arrives.
+  // Show an error, or a loading message until the data arrives.
   if (shuttle === null) {
     return (
       <section className="card wide">
         <p className="card-label">Shuttle Times</p>
-        <p className="muted">Loading...</p>
+        {errorMessage !== "" ? (
+          <p className="error-message" role="alert">{errorMessage}</p>
+        ) : (
+          <p className="muted">Loading...</p>
+        )}
       </section>
     );
   }

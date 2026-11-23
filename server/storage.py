@@ -72,6 +72,29 @@ def load_uod():
     return date_to_text(row)
 
 
+def save_uod(uniform, notes):
+    """
+    Set the Uniform of the Day, dated today. Used by update_uod.py (and, later,
+    by the UOD email fetch if access is approved).
+    "ON DUPLICATE KEY UPDATE" means: add row 1 if it's missing, otherwise change it.
+
+    Parameters:
+        uniform (str): The uniform, e.g. "Class B".
+        notes (str): Extra details, or "" for none.
+    """
+    connection = get_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """INSERT INTO uod (id, date, uniform, notes) VALUES (1, %s, %s, %s)
+                   ON DUPLICATE KEY UPDATE date = VALUES(date), uniform = VALUES(uniform), notes = VALUES(notes)""",
+                (date.today(), uniform, notes),
+            )
+        connection.commit()
+    finally:
+        connection.close()
+
+
 def load_schedule(name):
     """
     Return a schedule ("ferry" or "shuttle"). Schedules are nested lists

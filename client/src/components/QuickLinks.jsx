@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from "react";
 import Carousel from "./Carousel.jsx";
+import { fetchJson } from "../api.js";
 
 /**
  * QuickLinks - loads the service links and hands them to the Carousel.
@@ -16,13 +17,14 @@ import Carousel from "./Carousel.jsx";
 function QuickLinks() {
   // The list of links. It starts empty until the server responds.
   const [links, setLinks] = useState([]);
+  // A message to show if the links could not be loaded.
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Ask the server for the links once, when the component first appears.
   useEffect(() => {
-    fetch("/api/links")
-      .then((response) => response.json())
+    fetchJson("/api/links")
       .then((data) => setLinks(data))
-      .catch((error) => console.error("Could not load links:", error));
+      .catch((error) => setErrorMessage("Couldn't load quick links. " + error.message));
   }, []);
 
   return (
@@ -30,7 +32,12 @@ function QuickLinks() {
       <div className="hero-inner">
         <h1>Everything you need, in one place.</h1>
         <p className="hero-subtitle">Quick access to the services cadets use every day.</p>
-        <Carousel links={links} />
+        {/* Show the error instead of the carousel (which would say "Loading..." forever). */}
+        {errorMessage !== "" ? (
+          <p className="hero-error" role="alert">{errorMessage}</p>
+        ) : (
+          <Carousel links={links} />
+        )}
       </div>
     </section>
   );

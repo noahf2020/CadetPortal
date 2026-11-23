@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { fetchJson } from "../api.js";
 
 /**
  * makeBlankCard - creates an empty card for a new row in the form.
@@ -31,23 +32,53 @@ const SEPARATOR_OPTIONS = {
   custom: "",
 };
 
+// The longest term or definition the server accepts (MAX_CARD_TEXT_LENGTH in
+// server/decks.py). Checking it here too means the preview catches it early.
+const MAX_CARD_TEXT_LENGTH = 1000;
+
 /**
- * parseCardsFromText - turns the text of an imported file into cards.
+ * findLineProblem - checks one imported line and says what's wrong with it.
+ * @param {string} term - The text before the separator.
+ * @param {string} definition - The text after the separator.
+ * @returns {string} The problem, e.g. "Missing definition", or "" if the line is fine.
+ */
+function findLineProblem(term, definition) {
+  if (term === "") {
+    return "Missing term (nothing before the separator)";
+  }
+  if (definition === "") {
+    return "Missing definition (nothing after the separator)";
+  }
+  if (term.length > MAX_CARD_TEXT_LENGTH || definition.length > MAX_CARD_TEXT_LENGTH) {
+    return "Too long (over " + MAX_CARD_TEXT_LENGTH + " characters)";
+  }
+  return "";
+}
+
+/**
+ * parseCardsFromText - turns imported text into cards, and lists any lines
+ * that can't become a card (so the cadet can see and fix them).
  * Each line is one card. The term is everything before the FIRST separator,
  * and the definition is everything after it (so definitions may contain the separator).
- * @param {string} text - The full text of the file.
+ * Blank lines are ignored.
+ * @param {string} text - The full text of the file or paste.
  * @param {string} separator - What splits the term from the definition (e.g. a tab).
- * @returns {Object} { cards: [...], skippedLines: number } - the cards found, and how
- *   many non-empty lines had no separator and were skipped.
+ * @returns {Object} {
+ *     cards:    [{ term, definition }]   - the good lines, in order,
+ *     problems: [{ lineNumber, text, reason }] - the lines that were left out
+ *   }
  */
 function parseCardsFromText(text, separator) {
   const importedCards = [];
-  let skippedLines = 0;
+  const problems = [];
 
   // Windows files end lines with "\r\n", others with "\n". Split on either.
   const lines = text.split(/\r?\n/);
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineNumber = i + 1; // people count lines from 1, not 0
+
     // Skip blank lines.
     if (line.trim() === "") {
       continue;
@@ -55,16 +86,32 @@ function parseCardsFromText(text, separator) {
 
     const separatorIndex = line.indexOf(separator);
     if (separatorIndex === -1) {
-      skippedLines = skippedLines + 1;
+      problems.push({ lineNumber: lineNumber, text: line, reason: "No separator found" });
       continue;
     }
 
     const term = line.slice(0, separatorIndex).trim();
     const definition = line.slice(separatorIndex + separator.length).trim();
+    const problem = findLineProblem(term, definition);
+    if (problem !== "") {
+      problems.push({ lineNumber: lineNumber, text: line, reason: problem });
+      continue;
+    }
+
     importedCards.push({ term: term, definition: definition });
   }
 
-  return { cards: importedCards, skippedLines: skippedLines };
+  return { cards: importedCards, problems: problems };
+}
+
+/**
+ * showSeparators - makes tabs visible in a line of text, so the cadet can see
+ * why a line was rejected. Tabs become "→".
+ * @param {string} text - A line from the import.
+ * @returns {string} The line with tabs shown as arrows.
+ */
+function showSeparators(text) {
+  return text.replace(/\t/g, " → ");
 }
 
 /**
@@ -111,26 +158,26 @@ function DeckEditor() {
   const [importMessage, setImportMessage] = useState("");
   // The text in the bulk paste box.
   const [pastedText, setPastedText] = useState("");
+  // The import waiting for the cadet to confirm, or null if there isn't one.
+  // It looks like { cards, problems, fromPaste } (see parseCardsFromText).
+  const [importPreview, setImportPreview] = useState(null);
+  // true while a save or delete is being sent, so the buttons can't be double-clicked.
+  const [isSaving, setIsSaving] = useState(false);
 
   // When editing, load the deck once and fill in the form with its details.
   useEffect(() => {
     if (!isEditing) {
       return;
     }
-    fetch("/api/decks/" + deckId)
-      .then((response) => response.json())
+    fetchJson("/api/decks/" + deckId)
       .then((deck) => {
-        if (deck.error) {
-          setErrorMessage(deck.error);
-          return;
-        }
         setTitle(deck.title);
         setCourse(deck.course);
         setInstructor(deck.instructor);
         setDescription(deck.description);
         setCards(deck.cards);
       })
-      .catch((error) => console.error("Could not load deck:", error));
+      .catch((error) => setErrorMessage("Couldn't load this deck. " + error.message + " Reload the page to try again."));
   }, [deckId, isEditing]);
 
   /**
@@ -176,25 +223,35 @@ function DeckEditor() {
   }
 
   /**
-   * Turn imported text (from a file or a paste) into cards and add them to the form.
-   * Empty card rows in the form are dropped so the imported cards don't sit
-   * below blank rows. Cards the cadet already typed are kept.
+   * Check imported text (from a file or a paste) and show a preview of it.
+   * Nothing is added to the form until the cadet clicks "Add" in the preview.
    * @param {string} text - The text to import, one card per line.
-   * @returns {boolean} True if at least one card was added.
+   * @param {boolean} fromPaste - true if it came from the paste box (so the box
+   *   can be emptied once the cards are added).
    */
-  function addCardsFromText(text) {
+  function previewImport(text, fromPaste) {
     const separator = getSeparator();
     if (separator === "") {
       setImportMessage("Type a custom separator before importing.");
-      return false;
+      return;
     }
 
     const result = parseCardsFromText(text, separator);
-    if (result.cards.length === 0) {
-      setImportMessage("No cards found. Check that the separator matches your text.");
-      return false;
+    if (result.cards.length === 0 && result.problems.length === 0) {
+      setImportMessage("That text is empty.");
+      return;
     }
 
+    setImportMessage("");
+    setImportPreview({ cards: result.cards, problems: result.problems, fromPaste: fromPaste });
+  }
+
+  /**
+   * Add the previewed cards to the form.
+   * Empty card rows in the form are dropped so the imported cards don't sit
+   * below blank rows. Cards the cadet already typed are kept.
+   */
+  function confirmImport() {
     // Keep only the cards that already have something typed in them.
     const filledCards = [];
     for (const card of cards) {
@@ -202,18 +259,27 @@ function DeckEditor() {
         filledCards.push(card);
       }
     }
-    setCards([...filledCards, ...result.cards]);
+    setCards([...filledCards, ...importPreview.cards]);
 
-    let message = "Imported " + result.cards.length + " card(s).";
-    if (result.skippedLines > 0) {
-      message = message + " Skipped " + result.skippedLines + " line(s) with no separator.";
+    let message = "Added " + importPreview.cards.length + " card(s).";
+    if (importPreview.problems.length > 0) {
+      message = message + " Left out " + importPreview.problems.length + " line(s) with problems.";
     }
     setImportMessage(message);
-    return true;
+    if (importPreview.fromPaste) {
+      setPastedText("");
+    }
+    setImportPreview(null);
+  }
+
+  /** Close the preview without adding anything. */
+  function cancelImport() {
+    setImportPreview(null);
+    setImportMessage("Import cancelled. Nothing was added.");
   }
 
   /**
-   * Read a .txt file the cadet picked and add its lines as cards.
+   * Read a .txt file the cadet picked and preview its lines as cards.
    * @param {Event} event - The file input's change event.
    */
   function importFromFile(event) {
@@ -226,17 +292,14 @@ function DeckEditor() {
 
     // FileReader reads the file in the browser. onload runs once it is done.
     const reader = new FileReader();
-    reader.onload = () => addCardsFromText(reader.result);
+    reader.onload = () => previewImport(reader.result, false);
     reader.onerror = () => setImportMessage("Could not read that file.");
     reader.readAsText(file);
   }
 
-  /** Add the cards from the bulk paste box, then empty the box if it worked. */
+  /** Preview the cards in the bulk paste box. */
   function importFromPaste() {
-    const added = addCardsFromText(pastedText);
-    if (added) {
-      setPastedText("");
-    }
+    previewImport(pastedText, true);
   }
 
   /**
@@ -260,20 +323,20 @@ function DeckEditor() {
     const url = isEditing ? "/api/decks/" + deckId : "/api/decks";
     const method = isEditing ? "PUT" : "POST";
 
-    fetch(url, {
+    setIsSaving(true);
+    setErrorMessage("");
+    fetchJson(url, {
       method: method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(deckData),
     })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.error) {
-          setErrorMessage(data.error);
-        } else {
-          navigate("/quizlet/" + data.id);
-        }
-      })
-      .catch((error) => console.error("Could not save deck:", error));
+      .then((data) => navigate("/quizlet/" + data.id))
+      // e.g. "Title is required." or "Couldn't reach the server..."
+      // The form keeps everything the cadet typed, so they can fix it and try again.
+      .catch((error) => {
+        setErrorMessage("Couldn't save the deck. " + error.message);
+        setIsSaving(false);
+      });
   }
 
   /** Delete the deck (after asking the cadet to confirm), then go back to the deck list. */
@@ -282,20 +345,18 @@ function DeckEditor() {
       return;
     }
 
-    fetch("/api/decks/" + deckId, {
+    setIsSaving(true);
+    setErrorMessage("");
+    fetchJson("/api/decks/" + deckId, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ edit_code: editCode }),
     })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.error) {
-          setErrorMessage(data.error);
-        } else {
-          navigate("/quizlet");
-        }
-      })
-      .catch((error) => console.error("Could not delete deck:", error));
+      .then(() => navigate("/quizlet"))
+      .catch((error) => {
+        setErrorMessage("Couldn't delete the deck. " + error.message);
+        setIsSaving(false);
+      });
   }
 
   // Where the "Cancel" link goes: back to the deck, or back to the deck list.
@@ -377,11 +438,18 @@ function DeckEditor() {
             onClick={importFromPaste}
             disabled={pastedText.trim() === ""}
           >
-            Add pasted cards
+            Preview pasted cards
           </button>
-          <span className="muted small">One card per line. Imported cards are added after any cards you already typed.</span>
+          <span className="muted small">
+            One card per line. You'll see a preview before anything is added. Imported cards
+            go after any cards you already typed.
+          </span>
           {/* aria-live makes screen readers announce the message when it changes. */}
           <span className="small" aria-live="polite">{importMessage}</span>
+
+          {importPreview !== null && (
+            <ImportPreview preview={importPreview} onConfirm={confirmImport} onCancel={cancelImport} />
+          )}
         </div>
 
         {cards.map((card, index) => (
@@ -432,17 +500,92 @@ function DeckEditor() {
         {errorMessage !== "" && <p className="error-message" role="alert">{errorMessage}</p>}
 
         <div className="form-buttons">
-          <button type="submit" className="button">
-            {isEditing ? "Save changes" : "Create deck"}
+          <button type="submit" className="button" disabled={isSaving}>
+            {getSaveButtonText(isSaving, isEditing)}
           </button>
           {isEditing && (
-            <button type="button" className="button danger" onClick={deleteDeck}>
+            <button type="button" className="button danger" onClick={deleteDeck} disabled={isSaving}>
               Delete deck
             </button>
           )}
         </div>
       </form>
     </main>
+  );
+}
+
+/**
+ * getSaveButtonText - the words on the save button.
+ * @param {boolean} isSaving - true while the save is being sent.
+ * @param {boolean} isEditing - true when editing an existing deck.
+ * @returns {string} e.g. "Saving..." or "Create deck".
+ */
+function getSaveButtonText(isSaving, isEditing) {
+  if (isSaving) {
+    return "Saving...";
+  }
+  if (isEditing) {
+    return "Save changes";
+  }
+  return "Create deck";
+}
+
+/**
+ * ImportPreview - shows the cards an import will add, and the lines that
+ * have problems, before anything changes in the form.
+ * @param {Object} props
+ * @param {Object} props.preview - { cards, problems } from parseCardsFromText.
+ * @param {Function} props.onConfirm - Adds the good cards to the form.
+ * @param {Function} props.onCancel - Closes the preview without adding anything.
+ * @returns The preview panel.
+ */
+function ImportPreview({ preview, onConfirm, onCancel }) {
+  const cardCount = preview.cards.length;
+  const problemCount = preview.problems.length;
+
+  return (
+    <div className="import-preview" role="region" aria-label="Import preview">
+      <p className="import-preview-title">
+        Preview: {cardCount} card(s) ready
+        {problemCount > 0 && <span className="error-text"> · {problemCount} line(s) with problems</span>}
+      </p>
+
+      {problemCount > 0 && (
+        <div className="import-problems">
+          <p className="small">
+            These lines will be left out. To include them, fix them in your text and import again
+            (or add them by hand after).
+          </p>
+          {preview.problems.map((problem) => (
+            <div key={problem.lineNumber} className="import-problem-row">
+              <span className="import-line-number">Line {problem.lineNumber}</span>
+              <span className="error-text">{problem.reason}</span>
+              <code className="import-line-text">{showSeparators(problem.text)}</code>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {cardCount > 0 && (
+        <div className="import-preview-cards">
+          {preview.cards.map((card, index) => (
+            <div key={index} className="term-row">
+              <span className="term-word">{card.term}</span>
+              <span>{card.definition}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="import-preview-buttons">
+        <button type="button" className="button" onClick={onConfirm} disabled={cardCount === 0}>
+          Add {cardCount} card(s)
+        </button>
+        <button type="button" className="button secondary" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }
 

@@ -28,6 +28,7 @@ CadetPortal/
 │   ├── storage.py       # Every query that reads or saves data
 │   ├── decks.py         # Study deck input checks and edit codes
 │   ├── setup_database.py # Run once: creates the tables and loads data/*.json
+│   ├── update_uod.py    # Manual UOD update: python update_uod.py "Class B" "notes" (uses storage.save_uod)
 │   ├── data/            # Starting data (JSON), only used by setup_database.py
 │   ├── .env.example     # Template for server/.env (database settings; .env is never committed)
 │   ├── conftest.py      # Test setup: uses a separate test database
@@ -37,6 +38,7 @@ CadetPortal/
 │   └── src/
 │       ├── main.jsx     # Starts React inside a BrowserRouter
 │       ├── App.jsx      # Top bar + the list of page routes
+│       ├── api.js       # fetchJson: every API call goes through it; failures become readable Error messages
 │       ├── studyHelpers.js # Shared non-component helpers (shuffle, keyboard checks, .txt export)
 │       └── components/  # One component per file (HomePage, QuizletHome, DeckView, Flashcards, Learn, Test, DeckEditor, ...)
 ├── README.md
@@ -73,6 +75,11 @@ Keep this layout up to date if the structure changes.
   ```json
   { "id": 1, "title": "Formation Change", "body": "Formation is at 0645 tomorrow.", "author": "CPT Smith", "date": "2026-10-01" }
   ```
+
+## Frontend Conventions
+
+- Call the API with `fetchJson` from `client/src/api.js`, never `fetch` directly. Catch errors and show them to the cadet (an `errorMessage` state rendered as `<p className="error-message" role="alert">`). Never leave a page stuck on "Loading..." or a button that silently fails.
+- Deck import goes through a preview (`ImportPreview` in `DeckEditor.jsx`): malformed lines are listed by line number and never added silently. Client checks mirror the server's (`MAX_CARD_TEXT_LENGTH`).
 
 ## API Conventions
 
